@@ -17,12 +17,25 @@ string[] criteriosOmitidos = new[]
     "https"                  // contenido web filtrado
 };
 var streams = GetExcelStreams(path, names);
-
 List<List<string>> prop = new List<List<string>>();
-foreach (var stream in streams) 
+int lastIndex = 497; // índice inicial
+
+foreach (var stream in streams)
 {
-    prop.Add(handler.GenerarListaDesdeExcel<DataSecondColumn>(stream, "","Principal","F"));
+    int hasta; // índice calculado por el método
+
+    var resultado = handler.GenerarListaDesdeExcel<DataSecondColumn>(
+        stream,
+        "",         
+        out hasta,   
+        lastIndex,   
+        "Principal","F"
+    );
+
+    prop.Add(resultado);
+    lastIndex = hasta; 
 }
+
 
 if (!prop.Any()) 
 {
@@ -40,7 +53,7 @@ foreach (var writeCurrent in prop) //This is the best code i´ve ever writen
     {
         foreach (var linea in writeCurrent)
         {
-            writer.WriteLine(linea+"|");
+            writer.WriteLine(linea+";");
         }
     }
 

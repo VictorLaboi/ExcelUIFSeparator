@@ -9,16 +9,15 @@ namespace PLDMexicoMejorado.Utils
 {
     public class ExcelHandler
     {
-        public List<string> GenerarListaDesdeExcel<T>(Stream streamXlsx, string? propiedad, params string[] propParams)
+        public List<string> GenerarListaDesdeExcel<T>(
+          Stream streamXlsx,
+          string? propiedad,
+          out int contadorFinal,
+          int contadorInicial,
+         params string[] propParams)
         {
 
-            /*
-             Donde matches omitidos son todos aquellos parámetros que el usuario busca omitir.
-            Se transforman a Regex y despues se pasan como parámetro por medio de un foreach a los criterios de omision 
-             */
-
-
-
+            int ContadorCm = contadorInicial;
             List<string> resultado = new List<string>();
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
@@ -30,18 +29,18 @@ namespace PLDMexicoMejorado.Utils
                     {
                         ConfigureDataTable = (_) => new ExcelDataTableConfiguration
                         {
-                            UseHeaderRow = true, // Usa la primera fila como nombres de columna
-                            FilterColumn = (columnReader, columnIndex) => columnIndex == 0 && propParams[0] != null || propParams[0] != string.Empty 
-                            || columnIndex == 1 && propParams[1] != null || propParams[1] != string.Empty
-                            //ReadHeaderRow = rowReader => { /* lógica para leer encabezados si necesitas */ }
+                            UseHeaderRow = true,
+                            FilterColumn = (columnReader, columnIndex) =>
+                                columnIndex == 0 && !string.IsNullOrEmpty(propParams[0])
+                                || columnIndex == 1 && !string.IsNullOrEmpty(propParams[1])
                         }
                     });
-                    
-                    DataTable table = dataset.Tables[0];
 
+                    DataTable table = dataset.Tables[0];
                     foreach (DataRow row in table.Rows)
                     {
                         T instancia = (T)Activator.CreateInstance(typeof(T));
+
                         foreach (var prop in typeof(T).GetProperties())
                         {
                             if (table.Columns.Contains(prop.Name))
@@ -54,34 +53,12 @@ namespace PLDMexicoMejorado.Utils
                             }
                         }
 
-
-                        /*
-                         A partir de este punto es donde se comenzará a hacer la relevacion entre params establecidos, bajo la condicion de que
-                        dentro de la tabla Excel realmente se encuentren esas columanas, de otro modo lo establecido será string.Empty o null. 
-
-                         */
-                        foreach (var valueProp in propParams) //Obtenemos los parametros de la clase T
+                        foreach (var valueProp in propParams)
                         {
-                            var propiedadInfo = instancia.GetType().GetProperty(valueProp); //Aqui es donde irá el var del foreach.
+                            var propiedadInfo = instancia.GetType().GetProperty(valueProp);
                             if (propiedadInfo != null)
                             {
-                                /*La instancia establece 2 valores que hacen match con lo establecido dentro de propValues.
-                                Cuando no coinciden, no se procede. 
-                                 */
-
                                 var val = propiedadInfo.GetValue(instancia);
-
-
-                                /*Faltan las condicionantes donde "FechaNacimiento" o cualquier otro establecido dentro del DTO se cumple
-                                 
-                                 La iteracion solo valida el primer parametro del DTO pero no hace validaciones si dentro del DTO.Params > 1 || <0
-                                Por lo que es necesario almacenar este valor dentro de un array para poder iterarlo como es debido o en su defecto, hacer que vaya 1:1 SIN repetir.
-                                 
-                                 */
-
-
-
-
                                 if (val != null)
                                 {
                                     string texto = val.ToString();
@@ -93,43 +70,59 @@ namespace PLDMexicoMejorado.Utils
                                         {
                                             texto = texto.Substring(indexer + 1).Trim();
                                         }
-                                        resultado.Add(texto);
+
+                                        resultado.Add($"INSERT INTO EntidadesInfo(idEntidad,FechaNacimiento) VALUES ({ContadorCm},'{texto}')");
                                     }
 
-                                    //resultado.Add(texto);
                                     if (propiedadInfo.Name == "Principal")
                                     {
-                                        // Obtener solo lo anterior a "también conocido como" (insensible a mayúsculas)
-                                        var regex = new Regex(@"t[aá]mb[ií]?[eé]n\s+conoc[ií]do\s+como[:：]", RegexOptions.IgnoreCase);
-                                        var match = regex.Match(texto);
-                                        if (match.Success)
+                                        var OnitRegex = new Regex(@"\b\d+[\.\-]?\s*['‘“\""]*\s*[A-Za-z]", RegexOptions.IgnoreCase);
+                                        var matchOnInit = OnitRegex.Match(texto ?? string.Empty);
+                                        if (matchOnInit.Success)
                                         {
-                                            texto = texto.Substring(0, match.Index).Trim();
-                                        }
-                                        int interpol = texto.IndexOf("Liga de", StringComparison.OrdinalIgnoreCase);
-                                        if (interpol > 0)
-                                        {
-                                            texto = texto.Substring(0, interpol).Trim();
-                                        }
-                                        // Solo agregar si NO contiene lo no deseado
-                                        if (!texto.Contains("Página", StringComparison.OrdinalIgnoreCase)
-                                            && !texto.Contains("www.gob.mx/uif", StringComparison.OrdinalIgnoreCase)
-                                            && !texto.Contains("https", StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            resultado.Add(texto);
+                                            texto = Regex.Replace(texto ?? string.Empty, @"^\s*\d+[\.\-]?\s*", "").Trim();
+
+                                            var regexAlias = new Regex(@"[,\.]?\s*t[aá]mb[ií]?[eé]n\s+conoc[ií]do\s+como[:：]?", RegexOptions.IgnoreCase);
+                                            var matchAlias = regexAlias.Match(texto);
+                                            if (matchAlias.Success && matchAlias.Index > 0)
+                                            {
+                                                texto = texto.Substring(0, matchAlias.Index).Trim();
+                                            }
+
+                                            int indexer = texto.IndexOf(")");
+                                            if (indexer > 0 && indexer < texto.Length - 1)
+                                            {
+                                                texto = texto.Substring(indexer + 1).Trim();
+                                            }
+
+                                            int interpol = texto.IndexOf("Liga de", StringComparison.OrdinalIgnoreCase);
+                                            if (interpol > 0)
+                                            {
+                                                texto = texto.Substring(0, interpol).Trim();
+                                            }
+
+                                            if (!string.IsNullOrWhiteSpace(texto)
+                                                && !texto.Contains("Página", StringComparison.OrdinalIgnoreCase)
+                                                && !texto.Contains("www.gob.mx/uif", StringComparison.OrdinalIgnoreCase)
+                                                && !texto.Contains("https", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                ContadorCm++;
+                                                resultado.Add($"INSERT INTO UIFEntidades (Id, Nombre,Tipo) VALUES ({ContadorCm},'{texto}','INDIVIDUAL')");
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                return resultado;
+                    contadorFinal = ContadorCm;
+                    return resultado;
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                // Puedes loggear el error si quieres trazabilidad
+                contadorFinal = ContadorCm;
                 return new List<string>();
             }
         }

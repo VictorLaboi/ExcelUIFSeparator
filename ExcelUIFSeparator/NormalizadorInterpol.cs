@@ -7,7 +7,7 @@ class NormalizadorInterpol
     public void Procesar(string rutaEntrada, string rutaSalidaCsv)
     {
         var registros = File.ReadAllText(rutaEntrada)
-                            .Split('|', StringSplitOptions.RemoveEmptyEntries);
+                            .Split(';', StringSplitOptions.RemoveEmptyEntries);
 
         var salida = new StringBuilder();
         salida.AppendLine("NombrePrincipal,NombresAlternos");
@@ -41,6 +41,7 @@ class NormalizadorInterpol
 
             // Extraer nombres alternos
             var alternosMatch = Regex.Match(texto, @"también conocido como[:\s]*(.*)", RegexOptions.IgnoreCase);
+
             if (alternosMatch.Success)
             {
                 var alternosTexto = alternosMatch.Groups[1].Value;

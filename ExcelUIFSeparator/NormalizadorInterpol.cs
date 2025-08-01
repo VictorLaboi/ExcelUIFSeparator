@@ -1,6 +1,5 @@
-﻿using System.Text.RegularExpressions;
-using System.Text;
-using System.IO;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 
 class NormalizadorInterpol
 {
@@ -15,62 +14,73 @@ class NormalizadorInterpol
         foreach (var registro in registros)
         {
             var texto = registro.Replace("\r", " ").Replace("\n", " ").Trim();
+            string numeroCurrent = texto.Split("|")[0];
 
-            string nombrePrincipal = "";
+            string nombrePrincipal = ExtraerNombrePrincipal(texto[(texto.IndexOf("|") + 1)..]);
+
             List<string> nombresAlternos = new();
 
-            // Extraer nombre principal (hasta antes de "también conocido como")
-            var nombrePrincipalMatch = Regex.Match(texto, @"^(.*?)(?=\s*,?\s*también conocido como)", RegexOptions.IgnoreCase);
-            if (nombrePrincipalMatch.Success)
+            
+
+            string pattern = @"([a-z0-9])\)\s+(.+?)(?=(?:[a-z0-9]\)\s+)|$)";
+
+            var matches = Regex.Matches(texto, pattern, RegexOptions.IgnoreCase);
+
+            foreach (Match match in matches)
             {
-                nombrePrincipal = nombrePrincipalMatch.Groups[1].Value.Trim().TrimEnd(',');
-            }
-            else
-            {
-                // Si no hay "también conocido como", tomar el texto hasta la coma final
-                var simpleNombre = Regex.Match(texto, @"^(.*?),");
-                if (simpleNombre.Success)
-                {
-                    nombrePrincipal = simpleNombre.Groups[1].Value.Trim();
-                }
-                else
-                {
-                    nombrePrincipal = texto; // último recurso
-                }
+                string nombre = match.Groups[2].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(nombre))
+                    nombresAlternos.Add(nombre);
             }
 
-            // Extraer nombres alternos
-            var alternosMatch = Regex.Match(texto, @"también conocido como[:\s]*(.*)", RegexOptions.IgnoreCase);
 
-            if (alternosMatch.Success)
-            {
-                var alternosTexto = alternosMatch.Groups[1].Value;
-
-                // Buscar si vienen con a), b), etc.
-                var matches = Regex.Matches(alternosTexto, @"[a-zA-Z0-9]\)\s*([^\n\r,;]+)");
-                foreach (Match m in matches)
-                {
-                    var nombreAlt = m.Groups[1].Value.Trim();
-                    if (!string.IsNullOrWhiteSpace(nombreAlt))
-                        nombresAlternos.Add(nombreAlt);
-                }
-
-                // Si no hay con etiquetas, dividir por saltos o comas
-                if (nombresAlternos.Count == 0)
-                {
-                    var sinEtiquetas = alternosTexto.Replace("\n", " ").Replace("\r", " ");
-                    nombresAlternos.AddRange(
-                        sinEtiquetas.Split(';', ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    );
-                }
-            }
-
-            salida.AppendLine($"\"{nombrePrincipal}\",\"{string.Join("▬ ", nombresAlternos)}\"");
+            salida.AppendLine(
+                $"--{numeroCurrent}:{nombrePrincipal}\n" +
+                string.Join("\n", nombresAlternos.Select(n =>
+                    $"INSERT INTO alt_entidad (idEntidad, NombreAlternativo) SELECT Id, '{n.Replace("'", "`").Trim()}' FROM UIFEntidades WHERE Nombre COLLATE Latin1_General_CI_AI LIKE '%{nombrePrincipal.Replace("'", "''").Trim()}%';"
+                ))
+            );
         }
 
-        using (StreamWriter writer = new StreamWriter(rutaSalidaCsv))
+        File.WriteAllText(rutaSalidaCsv, salida.ToString());
+    }
+
+    private string ExtraerNombrePrincipal(string texto)
+    {
+        // Si hay número y '|', lo eliminamos
+        var separador = texto.IndexOf('|');
+        if (separador >= 0 && separador + 1 < texto.Length)
+            texto = texto[(separador + 1)..].Trim();
+
+        // Buscar índice de cualquier patrón de "también conocido como"
+        var patrones = new[]
         {
-            writer.WriteLine(salida.ToString());
+        "también conocido como",
+        ", también conocido como",
+        ",también conocido como"
+    };
+
+        int index = -1;
+        foreach (var patron in patrones)
+        {
+            index = texto.IndexOf(patron, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+                break;
         }
+
+        // Extraer parte principal
+        string principal = index >= 0 ? texto[..index].Trim() : texto.Trim();
+
+        // Quitar coma final si existe
+        if (principal.EndsWith(","))
+            principal = principal[..^1].Trim();
+
+        return SanearNombre(principal);
+    }
+
+
+    private string SanearNombre(string nombre)
+    {
+        return Regex.Replace(nombre, @"\s+", " "); // quita espacios dobles
     }
 }

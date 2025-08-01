@@ -2,6 +2,8 @@
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Finance.Implementations;
 using PLDMexicoMejorado.Utils;
 using System.Xml.XPath;
+using System;
+using System.Text.RegularExpressions;
 
 ExcelHandler handler = new ExcelHandler();
 
@@ -18,7 +20,7 @@ string[] criteriosOmitidos = new[]
 };
 var streams = GetExcelStreams(path, names);
 List<List<string>> prop = new List<List<string>>();
-int lastIndex = 497; // índice inicial
+int lastIndex = 0; // índice inicial
 
 foreach (var stream in streams)
 {
@@ -26,18 +28,18 @@ foreach (var stream in streams)
 
     var resultado = handler.GenerarListaDesdeExcel<DataSecondColumn>(
         stream,
-        "",         
-        out hasta,   
-        lastIndex,   
-        "Principal","F"
+        "",
+        out hasta,
+        lastIndex,
+        "Principal", ""
     );
 
     prop.Add(resultado);
-    lastIndex = hasta; 
+    lastIndex = hasta;
 }
 
 
-if (!prop.Any()) 
+if (!prop.Any())
 {
     Console.WriteLine("No se han encontrado elementos");
     return;
@@ -53,7 +55,7 @@ foreach (var writeCurrent in prop) //This is the best code i´ve ever writen
     {
         foreach (var linea in writeCurrent)
         {
-            writer.WriteLine(linea+";");
+            writer.WriteLine(linea + ";");
         }
     }
 
@@ -67,7 +69,7 @@ List<string> SalidaDatos = new List<string>();
 foreach (var file in Nombres)
 {
     string nuevoStr = Path.Combine(outputFolder, file);
-    if (nuevoStr is not null) 
+    if (nuevoStr is not null)
     {
         normalizador.Procesar($"{nuevoStr}", $@"C:\Users\Lione\Downloads\UIF\Normalizado\{file}");
     }
@@ -102,9 +104,9 @@ static List<FileStream> GetExcelStreams(string folderPath, List<string> fileName
 
 static List<string> GetDocumentNames(string folderPath)
 {
- string[] DocumentExtensions = { ".doc", ".docx", ".pdf", ".txt", ".xls", ".xlsx" };
+    string[] DocumentExtensions = { ".doc", ".docx", ".pdf", ".txt", ".xls", ".xlsx" };
 
-if (string.IsNullOrWhiteSpace(folderPath))
+    if (string.IsNullOrWhiteSpace(folderPath))
         throw new ArgumentException("La ruta no puede estar vacía.", nameof(folderPath));
 
     if (!Directory.Exists(folderPath))
@@ -123,3 +125,36 @@ if (string.IsNullOrWhiteSpace(folderPath))
 
     return documentNames;
 }
+
+//using System;
+//using System.Text.RegularExpressions;
+
+//class Program
+//{
+//    static void Main()
+//    {
+//        string texto = @"‘ABD AL-RAHMAN MUHAMMAD MUSTAFA AL-QADULI, también conocido como:
+//a) ‘Abd al-Rahman Muhammad Mustafa Shaykhlari
+//b) Umar Muhammad Khalil Mustafa
+//c) Abdul Rahman Muhammad al-Bayati
+//d) Tahir Muhammad Khalil Mustafa al-Bayati
+//e) Aliazra Ra’ad Ahmad
+//Liga de Interpol:
+//https://www.interpol.int/en/How-we-wor /Notices/View-UN-Notices- Individuals";
+
+//        // Regex que encuentra todas las líneas tipo: "a) Nombre"
+//        string pattern = @"(?<=^|\n)([a-z0-9])\)\s+(.+?)(?=\r?\n|$)";
+
+//        var matches = Regex.Matches(texto, pattern, RegexOptions.IgnoreCase);
+
+//        foreach (Match m in matches)
+//        {
+//            Console.WriteLine($"Opción {m.Groups[1].Value}: {m.Groups[2].Value.Trim()}");
+//        }
+
+//        if (matches.Count == 0)
+//        {
+//            Console.WriteLine("No se encontraron nombres listados como opciones.");
+//        }
+//    }
+//}

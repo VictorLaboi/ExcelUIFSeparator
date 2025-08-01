@@ -71,7 +71,7 @@ namespace PLDMexicoMejorado.Utils
                                             texto = texto.Substring(indexer + 1).Trim();
                                         }
 
-                                        resultado.Add($"INSERT INTO EntidadesInfo(idEntidad,FechaNacimiento) VALUES ({ContadorCm},'{texto}')");
+                                        resultado.Add($"{ContadorCm}|{texto}");
                                     }
 
                                     if (propiedadInfo.Name == "Principal")
@@ -82,18 +82,18 @@ namespace PLDMexicoMejorado.Utils
                                         {
                                             texto = Regex.Replace(texto ?? string.Empty, @"^\s*\d+[\.\-]?\s*", "").Trim();
 
-                                            var regexAlias = new Regex(@"[,\.]?\s*t[aá]mb[ií]?[eé]n\s+conoc[ií]do\s+como[:：]?", RegexOptions.IgnoreCase);
-                                            var matchAlias = regexAlias.Match(texto);
-                                            if (matchAlias.Success && matchAlias.Index > 0)
-                                            {
-                                                texto = texto.Substring(0, matchAlias.Index).Trim();
-                                            }
+                                            //var regexAlias = new Regex(@"[,\.]?\s*t[aá]mb[ií]?[eé]n\s+conoc[ií]do\s+como[:：]?", RegexOptions.IgnoreCase);
+                                            //var matchAlias = regexAlias.Match(texto);
+                                            //if (matchAlias.Success && matchAlias.Index > 0)
+                                            //{
+                                            //    texto = texto.Substring(0, matchAlias.Index).Trim();
+                                            //}
 
-                                            int indexer = texto.IndexOf(")");
-                                            if (indexer > 0 && indexer < texto.Length - 1)
-                                            {
-                                                texto = texto.Substring(indexer + 1).Trim();
-                                            }
+                                            //int indexer = texto.IndexOf(")");
+                                            //if (indexer > 0 && indexer < texto.Length - 1)
+                                            //{
+                                            //    texto = texto.Substring(indexer + 1).Trim();
+                                            //}
 
                                             int interpol = texto.IndexOf("Liga de", StringComparison.OrdinalIgnoreCase);
                                             if (interpol > 0)
@@ -107,7 +107,7 @@ namespace PLDMexicoMejorado.Utils
                                                 && !texto.Contains("https", StringComparison.OrdinalIgnoreCase))
                                             {
                                                 ContadorCm++;
-                                                resultado.Add($"INSERT INTO UIFEntidades (Id, Nombre,Tipo) VALUES ({ContadorCm},'{texto}','INDIVIDUAL')");
+                                                resultado.Add($"{ContadorCm}|{texto}");
                                             }
                                         }
                                     }

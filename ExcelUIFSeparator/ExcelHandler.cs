@@ -82,18 +82,25 @@ namespace PLDMexicoMejorado.Utils
                                         {
                                             texto = Regex.Replace(texto ?? string.Empty, @"^\s*\d+[\.\-]?\s*", "").Trim();
 
-                                            //var regexAlias = new Regex(@"[,\.]?\s*t[aá]mb[ií]?[eé]n\s+conoc[ií]do\s+como[:：]?", RegexOptions.IgnoreCase);
-                                            //var matchAlias = regexAlias.Match(texto);
-                                            //if (matchAlias.Success && matchAlias.Index > 0)
-                                            //{
-                                            //    texto = texto.Substring(0, matchAlias.Index).Trim();
-                                            //}
+                                            Regex[] regexRegulares = new Regex[] 
+                                            {
+                                                new Regex(@"[,\.]?\s*t[aá]mb[ií]?[eé]n\s+conoc[ií]do\s+como[:：]?", RegexOptions.IgnoreCase),
+                                                new Regex(@"[,\.]?\s*t[aá]mb[ií][eé]n\b", RegexOptions.IgnoreCase),
+                                                new Regex(@"\b[cC][oó][mM][oÓ]\b", RegexOptions.IgnoreCase),
+                                                new Regex(@"\b[cC][oó][nN][oó][cC][ií][dD][oÓ]\b", RegexOptions.IgnoreCase),
+                                                new Regex(@"(?<=\bconocida)([a-zA-Z]\))", RegexOptions.IgnoreCase),
+                                            };
 
-                                            //int indexer = texto.IndexOf(")");
-                                            //if (indexer > 0 && indexer < texto.Length - 1)
-                                            //{
-                                            //    texto = texto.Substring(indexer + 1).Trim();
-                                            //}
+                                            foreach (Regex regulares in regexRegulares)
+                                            {
+                                                if(regulares.IsMatch(texto))
+                                                {
+                                                    texto = regulares.Replace(texto, string.Empty);
+                                                }
+                                            }
+                                            Regex regexLetras = new Regex(@"(?<=[a-zA-Z\s,\.])([a-zA-Z]\))", RegexOptions.IgnoreCase);
+                                            texto = regexLetras.Replace(texto, "\n");
+
 
                                             int interpol = texto.IndexOf("Liga de", StringComparison.OrdinalIgnoreCase);
                                             if (interpol > 0)
@@ -107,7 +114,7 @@ namespace PLDMexicoMejorado.Utils
                                                 && !texto.Contains("https", StringComparison.OrdinalIgnoreCase))
                                             {
                                                 ContadorCm++;
-                                                resultado.Add($"{ContadorCm}|{texto}");
+                                                //resultado.Add($"{ContadorCm}|{texto}");
                                             }
                                         }
                                     }

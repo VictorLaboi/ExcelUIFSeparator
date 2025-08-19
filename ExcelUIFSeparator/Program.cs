@@ -31,7 +31,7 @@ foreach (var stream in streams)
         "",
         out hasta,
         lastIndex,
-        "Principal", ""
+        "Principal", "F"
     );
 
     prop.Add(resultado);
@@ -55,7 +55,7 @@ foreach (var writeCurrent in prop) //This is the best code i´ve ever writen
     {
         foreach (var linea in writeCurrent)
         {
-            writer.WriteLine(linea + ";");
+            writer.WriteLine(linea + "°");
         }
     }
 
@@ -126,35 +126,3 @@ static List<string> GetDocumentNames(string folderPath)
     return documentNames;
 }
 
-//using System;
-//using System.Text.RegularExpressions;
-
-//class Program
-//{
-//    static void Main()
-//    {
-//        string texto = @"‘ABD AL-RAHMAN MUHAMMAD MUSTAFA AL-QADULI, también conocido como:
-//a) ‘Abd al-Rahman Muhammad Mustafa Shaykhlari
-//b) Umar Muhammad Khalil Mustafa
-//c) Abdul Rahman Muhammad al-Bayati
-//d) Tahir Muhammad Khalil Mustafa al-Bayati
-//e) Aliazra Ra’ad Ahmad
-//Liga de Interpol:
-//https://www.interpol.int/en/How-we-wor /Notices/View-UN-Notices- Individuals";
-
-//        // Regex que encuentra todas las líneas tipo: "a) Nombre"
-//        string pattern = @"(?<=^|\n)([a-z0-9])\)\s+(.+?)(?=\r?\n|$)";
-
-//        var matches = Regex.Matches(texto, pattern, RegexOptions.IgnoreCase);
-
-//        foreach (Match m in matches)
-//        {
-//            Console.WriteLine($"Opción {m.Groups[1].Value}: {m.Groups[2].Value.Trim()}");
-//        }
-
-//        if (matches.Count == 0)
-//        {
-//            Console.WriteLine("No se encontraron nombres listados como opciones.");
-//        }
-//    }
-//}

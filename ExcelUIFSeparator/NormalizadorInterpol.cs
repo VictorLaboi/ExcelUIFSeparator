@@ -1,86 +1,61 @@
-﻿using System.Text;
+﻿using DocumentFormat.OpenXml.EMMA;
+using ExcelUIFSeparator;
+using System.Text;
 using System.Text.RegularExpressions;
 
 class NormalizadorInterpol
 {
-    public void Procesar(string rutaEntrada, string rutaSalidaCsv)
+    public void Procesar(string rutaEntrada, string rutaSalidaSql)
     {
         var registros = File.ReadAllText(rutaEntrada)
-                            .Split(';', StringSplitOptions.RemoveEmptyEntries);
+                            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
 
         var salida = new StringBuilder();
-        salida.AppendLine("NombrePrincipal,NombresAlternos");
 
-        foreach (var registro in registros)
+        foreach (var bloque in registros)
         {
-            var texto = registro.Replace("\r", " ").Replace("\n", " ").Trim();
-            string numeroCurrent = texto.Split("|")[0];
+            var matchId = Regex.Match(bloque, @"^(\d+)\|(.+)");
+            if (!matchId.Success)
+                continue;
 
-            string nombrePrincipal = ExtraerNombrePrincipal(texto[(texto.IndexOf("|") + 1)..]);
+            int id = int.Parse(matchId.Groups[1].Value);
+            string nombrePrincipal = matchId.Groups[2].Value.Trim();
+            nombrePrincipal = nombrePrincipal.Replace("'", "´");
+            var texto = Regex.Replace(nombrePrincipal, @"\s+", " ").Trim();
+            texto = texto.Normal();
 
-            List<string> nombresAlternos = new();
+            salida.AppendLine($"INSERT INTO EntidadesInfo(idEntidad, FechaNacimiento) values({id}, '{texto.Replace("°", null)}')");
 
-            
+            IEnumerable<string> nombresAlternos;
+                nombresAlternos = bloque.Split('\n')
+                           .Skip(1)
+                           .Select(x => x.Trim().Replace("'", "´"))
+                           .Where(x => !string.IsNullOrWhiteSpace(x) && !x.StartsWith(id + "|"));
 
-            string pattern = @"([a-z0-9])\)\s+(.+?)(?=(?:[a-z0-9]\)\s+)|$)";
 
-            var matches = Regex.Matches(texto, pattern, RegexOptions.IgnoreCase);
-
-            foreach (Match match in matches)
+            foreach (var alterno in nombresAlternos)
             {
-                string nombre = match.Groups[2].Value.Trim();
-                if (!string.IsNullOrWhiteSpace(nombre))
-                    nombresAlternos.Add(nombre);
+                salida.AppendLine($"INSERT INTO EntidadesInfo(idEntidad, FechaNacimiento) values({id}, '{texto.Replace("°", null)}')");
             }
-
-
-            salida.AppendLine(
-                $"--{numeroCurrent}:{nombrePrincipal}\n" +
-                string.Join("\n", nombresAlternos.Select(n =>
-                    $"INSERT INTO alt_entidad (idEntidad, NombreAlternativo) SELECT Id, '{n.Replace("'", "`").Trim()}' FROM UIFEntidades WHERE Nombre COLLATE Latin1_General_CI_AI LIKE '%{nombrePrincipal.Replace("'", "''").Trim()}%';"
-                ))
-            );
         }
 
-        File.WriteAllText(rutaSalidaCsv, salida.ToString());
+        File.WriteAllText(rutaSalidaSql, salida.ToString());
     }
 
-    private string ExtraerNombrePrincipal(string texto)
+}
+public static class StringExtensions
+{
+    public static string Normal(this string texto)
     {
-        // Si hay número y '|', lo eliminamos
-        var separador = texto.IndexOf('|');
-        if (separador >= 0 && separador + 1 < texto.Length)
-            texto = texto[(separador + 1)..].Trim();
+        if (string.IsNullOrWhiteSpace(texto))
+            return string.Empty;
 
-        // Buscar índice de cualquier patrón de "también conocido como"
-        var patrones = new[]
-        {
-        "también conocido como",
-        ", también conocido como",
-        ",también conocido como"
-    };
+        // Reemplaza múltiples espacios por uno solo
+        string limpio = Regex.Replace(texto, @"\s+", " ");
 
-        int index = -1;
-        foreach (var patron in patrones)
-        {
-            index = texto.IndexOf(patron, StringComparison.OrdinalIgnoreCase);
-            if (index >= 0)
-                break;
-        }
-
-        // Extraer parte principal
-        string principal = index >= 0 ? texto[..index].Trim() : texto.Trim();
-
-        // Quitar coma final si existe
-        if (principal.EndsWith(","))
-            principal = principal[..^1].Trim();
-
-        return SanearNombre(principal);
-    }
-
-
-    private string SanearNombre(string nombre)
-    {
-        return Regex.Replace(nombre, @"\s+", " "); // quita espacios dobles
+        // Elimina espacios al inicio y al final
+        return limpio.Trim();
     }
 }
+
+
